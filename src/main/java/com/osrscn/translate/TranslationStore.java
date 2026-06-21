@@ -4,8 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -14,10 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * In-memory English -> Simplified Chinese lookup, loaded from the community OSRS transcript TSVs.
@@ -70,6 +72,9 @@ public class TranslationStore
 	private final Map<Category, Map<String, String>> lowerMaps = new EnumMap<>(Category.class); // case-insensitive index
 	private volatile boolean loaded;
 	private volatile String baseUrl; // e.g. https://raw.githubusercontent.com/<user>/<repo>/<branch>/public/zh/
+
+	@Inject
+	private OkHttpClient httpClient;
 
 	public TranslationStore()
 	{
@@ -211,22 +216,17 @@ public class TranslationStore
 	private void download(String url, File dest) throws Exception
 	{
 		log.info("OSRSCN: downloading {}", url);
-		HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-		conn.setInstanceFollowRedirects(true);
-		conn.setRequestProperty("User-Agent", "osrscn-plugin");
-		conn.setConnectTimeout(15000);
-		conn.setReadTimeout(60000);
-		if (conn.getResponseCode() / 100 != 2)
+		Request request = new Request.Builder().url(url).build();
+		try (Response response = httpClient.newCall(request).execute())
 		{
-			throw new java.io.IOException("HTTP " + conn.getResponseCode());
-		}
-		try (InputStream in = conn.getInputStream())
-		{
-			Files.copy(in, dest.toPath());
-		}
-		finally
-		{
-			conn.disconnect();
+			if (!response.isSuccessful() || response.body() == null)
+			{
+				throw new java.io.IOException("HTTP " + response.code());
+			}
+			try (InputStream in = response.body().byteStream())
+			{
+				Files.copy(in, dest.toPath());
+			}
 		}
 	}
 
