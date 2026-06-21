@@ -7,6 +7,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,8 +21,8 @@ import net.runelite.client.game.ChatIconManager;
 
 /**
  * Renders Simplified Chinese characters to inline chat-icon images so they can be drawn on the
- * native OSRS UI via {@code <img=N>} tags. Glyphs are generated on demand from a system CJK font
- * (no bundled atlas) and cached per (size, colour, codepoint).
+ * native OSRS UI via {@code <img=N>} tags. Glyphs are generated on demand from a bundled OFL CJK font
+ * (no pre-rendered atlas) and cached per (size, colour, codepoint).
  *
  * <p>Three sizes are used: {@link #dialogueSize()} (user-configurable) for dialogue, a fixed
  * {@link #uiSize()} for interface/menus/chat, and a smaller fixed {@link #smallSize()} for hover
@@ -45,14 +46,18 @@ public class GlyphService
 	private static final String NO_LEADING = "、。，．；：！？）｝】》」』〉〕…—·％”’";
 	private static final int FAILED = -2; // font cannot render this codepoint (permanent)
 
-	// Emergency fallback only: the real default is the bundled OFL font (see bundledFontFile()). These
-	// families are used solely when neither a custom path nor the bundled font is present. Non-free
+	// Emergency fallback only: the real default is the bundled OFL font (see BUNDLED_FONT). These
+	// families are used solely when no custom path, external drop-in, or bundled font is present. Non-free
 	// system fonts (Microsoft YaHei = Founder, ...) are deliberately excluded so we never rasterise them.
 	private static final String[] FONT_CANDIDATES = {
 			"Source Han Sans SC", "思源黑体", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Heiti SC"
 	};
 
-	// The OFL font is shipped via the data channel into this folder and loaded by default.
+	// The default glyph font: Source Han Sans SC (SIL Open Font License) bundled in the JAR, so Chinese
+	// renders for every user out of the box (including those without a system CJK font). See OFL-1.1.txt.
+	private static final String BUNDLED_FONT = "/com/osrscn/SourceHanSansSC-Regular.otf";
+
+	// Optional external drop-in: an .otf/.ttf placed here overrides the bundled font without touching config.
 	private static final File FONT_DIR = new File(RuneLite.RUNELITE_DIR, "osrscn/font");
 
 	@Inject
@@ -467,9 +472,8 @@ public class GlyphService
 		customBase = null;
 		fontName = null;
 		fontResolved = false;
-		// User path wins; otherwise use the bundled OFL font shipped to the data dir. Only when neither is
-		// present do we fall back to a system CJK font (FONT_CANDIDATES).
-		File file = !path.isEmpty() ? new File(path) : bundledFontFile();
+		// Priority: user-configured path > external drop-in (FONT_DIR) > bundled OFL font (JAR) > system CJK.
+		File file = !path.isEmpty() ? new File(path) : externalDropInFont();
 		if (file != null)
 		{
 			try
@@ -478,7 +482,7 @@ public class GlyphService
 				customBase = Font.createFont(Font.TRUETYPE_FONT, file);
 				if (!customBase.canDisplay('中'))
 				{
-					log.warn("OSRSCN: font '{}' can't display CJK, using system font", file);
+					log.warn("OSRSCN: font '{}' can't display CJK, using bundled font", file);
 					customBase = null;
 				}
 				else
@@ -488,17 +492,42 @@ public class GlyphService
 			}
 			catch (Exception e)
 			{
-				log.warn("OSRSCN: failed to load font '{}', using system font", file, e);
+				log.warn("OSRSCN: failed to load font '{}', using bundled font", file, e);
+				customBase = null;
+			}
+		}
+		// Default: the OFL font bundled in the JAR, so Chinese renders even without any system CJK font.
+		if (customBase == null)
+		{
+			try (InputStream in = GlyphService.class.getResourceAsStream(BUNDLED_FONT))
+			{
+				if (in != null)
+				{
+					customBase = Font.createFont(Font.TRUETYPE_FONT, in);
+					if (!customBase.canDisplay('中'))
+					{
+						customBase = null;
+					}
+					else
+					{
+						log.info("OSRSCN glyph font: bundled {}", customBase.getFontName());
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				log.warn("OSRSCN: failed to load bundled font, using system font", e);
 				customBase = null;
 			}
 		}
 	}
 
 	/**
-	 * The OFL font shipped via the data channel ({@code ~/.runelite/osrscn/font/}); the default when the
-	 * user has not set a custom font path. Returns the first {@code .otf}/{@code .ttf} found, or null.
+	 * Optional external drop-in font in {@code ~/.runelite/osrscn/font/}: lets a user swap the glyph font
+	 * without setting a config path. Overrides the bundled font. Returns the first {@code .otf}/{@code .ttf}
+	 * found, or null (the common case), in which case the bundled JAR font is used.
 	 */
-	private static File bundledFontFile()
+	private static File externalDropInFont()
 	{
 		File[] files = FONT_DIR.listFiles((dir, name) ->
 		{

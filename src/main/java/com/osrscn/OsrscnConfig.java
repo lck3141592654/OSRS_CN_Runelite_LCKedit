@@ -131,7 +131,7 @@ public interface OsrscnConfig extends Config
 	@ConfigItem(
 			keyName = "fontPath",
 			name = "自定义字体",
-			description = "中文字图用的字体文件路径（.ttf/.otf）。留空则用系统字体（微软雅黑等）。改后即时生效。",
+			description = "中文字图用的字体文件路径（.ttf/.otf）。留空则用插件内置开源字体（思源黑体 Source Han Sans）。改后即时生效。",
 			section = display,
 			position = 1
 	)
@@ -152,7 +152,7 @@ public interface OsrscnConfig extends Config
 	)
 	default boolean useLocalAi()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
@@ -241,7 +241,7 @@ public interface OsrscnConfig extends Config
 	)
 	default String ollamaModel()
 	{
-		return "osrs-translator";
+		return "qwen2.5";
 	}
 
 	@ConfigItem(
