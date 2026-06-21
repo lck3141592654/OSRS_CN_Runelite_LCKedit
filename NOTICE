@@ -4,9 +4,12 @@ OSRSCN
 The Simplified Chinese translation data shipped with this plugin is the transcript and
 translation work of lck3141592654 (https://github.com/lck3141592654).
 
-This plugin bundles the Source Han Sans SC font (SourceHanSansSC-Regular.otf, version 2.005R,
-https://github.com/adobe-fonts/source-han-sans) to render Chinese glyphs.
-Copyright © 2014-2025 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+This plugin bundles a subset of the Source Han Sans SC font (version 2.005R,
+https://github.com/adobe-fonts/source-han-sans) to render Chinese glyphs. The bundled file
+(SourceHanSansSC-Regular.otf) is a derivative: it has been subset to the characters this plugin
+needs, and (as required by the SIL Open Font License Reserved Font Name clause) its internal
+font names no longer use the Reserved Font Name 'Source' (renamed to 'OSRSCN HanSans SC').
+Original copyright © 2014-2025 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
 Source is a trademark of Adobe in the United States and/or other countries. The font is licensed
 under the SIL Open Font License, Version 1.1; the full license text is in OFL-1.1.txt (also bundled
 in the JAR). The font is used for rendering only; OSRSCN itself remains under BSD 2-Clause (see LICENSE).
