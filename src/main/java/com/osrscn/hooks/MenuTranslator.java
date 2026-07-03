@@ -162,6 +162,21 @@ public class MenuTranslator
 	/** @return rendered target (name + localised level), or null to leave the English target */
 	public String translateTarget(String target, int size)
 	{
+		// "Use <item> -> <target>" (item selected, hovering another) joins two names; the combined
+		// string never matches the name table, so translate each side and keep the separator.
+		int arrow = target.indexOf(" -> ");
+		if (arrow >= 0)
+		{
+			String left = target.substring(0, arrow);
+			String right = target.substring(arrow + 4);
+			String lr = translateTarget(left, size);
+			String rr = translateTarget(right, size);
+			if (lr == null && rr == null)
+			{
+				return null;
+			}
+			return (lr != null ? lr : left) + " -> " + (rr != null ? rr : right);
+		}
 		String plainTarget = Tags.stripTags(target);
 		if (plainTarget.isEmpty())
 		{

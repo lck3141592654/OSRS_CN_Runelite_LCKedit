@@ -137,6 +137,7 @@ public class ChatHandler
 			case ENGINE:
 			case SPAM:
 			case WELCOME:
+			case BROADCAST:
 			case NPC_EXAMINE:
 			case ITEM_EXAMINE:
 			case OBJECT_EXAMINE:
